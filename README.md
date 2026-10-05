@@ -40,7 +40,8 @@ Dabei muss der Protokoll-Tab geöffnet sein.
 | Option | Wirkung |
 |---|---|
 | `--initial` | Unbekannte Personen und Themen werden direkt als Notizen angelegt statt im Prüfbericht gesammelt. Danach in Obsidian aufräumen (doppelte löschen, Aliase eintragen). |
-| `--refresh` | Cache ignorieren, alle Protokolle neu durchs Modell schicken. |
+| `--refresh` | Alle Protokolle neu durchs Modell schicken statt den Cache zu nutzen. |
+| `--refresh 2026-09-18 2026-09-25` | Nur diese Protokolle neu auswerten – praktisch zum Ausprobieren eines anderen Modells oder Prompts. |
 | `--restore-deleted` | Von Hand gelöschte Terminnotizen wieder anlegen. |
 | `--force` | Sperrdatei ignorieren (nach einem Absturz). |
 | `--ollama-url` | Andere Ollama-Adresse für diesen Lauf. |
@@ -135,6 +136,17 @@ Weitere Regeln:
   Sonst fragt der Prüfbericht.
 - Fehlen die Auto-Marker in einer Notiz, wird ihr Text nicht mehr angefasst.
 
+### Cache
+
+Die Ergebnisse des Modells liegen pro Protokoll in `.tbd/cache/`. Ein Eintrag wird nur
+ungültig, wenn sich **der Protokolltext** oder **der Aufbau des Ergebnisses** (Schema,
+Extraktor-Version) ändert.
+
+Ein anderes **Modell** oder ein geänderter **Prompt** machen den Cache bewusst nicht ungültig:
+Jeder Eintrag vermerkt, womit er erzeugt wurde, und `tbd sync` meldet, wie viele Ergebnisse
+von einem anderen Modell oder älteren Prompt stammen (`-v` zeigt welche). Neu ausgewertet
+wird nur auf Wunsch mit `--refresh` – für alle oder einzelne Protokolle.
+
 ### Der Prüfbericht
 
 Wird bei jedem Lauf neu erzeugt. Abschnitte: neue Personen, neue Themen, Konflikte,
@@ -183,7 +195,7 @@ an genau einer Stelle: in den `models.py` (`Field(alias="datum")`).
 
 | Was | Wo |
 |---|---|
-| Was als Termin zählt, Tonfall, Beispiele | `features/appointments/prompt_system.md` (Cache wird automatisch ungültig) |
+| Was als Termin zählt, Tonfall, Beispiele | `features/appointments/prompt_system.md` (danach `--refresh`, siehe „Cache“) |
 | Was pro Protokoll mitgeschickt wird | `features/appointments/prompt_user.md` + `prompt_values()` in `extractor.py` |
 | Modell, Ordnernamen, ignorierte Namen | `<Vault>/.tbd/config.yaml` |
 | Dataview-Abfragen neuer Notizen | `templates/*.md` (bestehende Notizen bleiben unverändert) |

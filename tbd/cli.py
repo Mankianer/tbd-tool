@@ -30,7 +30,9 @@ def build_parser() -> argparse.ArgumentParser:
     sync.add_argument("--export", type=Path, help="Markdown-Export aus Google Docs")
     sync.add_argument("--initial", action="store_true",
                       help="Erstlauf: unbekannte Personen/Themen direkt als Notizen anlegen")
-    sync.add_argument("--refresh", action="store_true", help="Cache ignorieren und alles neu extrahieren")
+    sync.add_argument("--refresh", nargs="*", metavar="PROTOKOLL",
+                      help="neu auswerten statt Cache nutzen: ohne Angabe alle Protokolle, "
+                           "sonst nur die genannten (z.B. 2026-09-18)")
     sync.add_argument("--restore-deleted", action="store_true", help="gelöschte Terminnotizen wieder anlegen")
     sync.add_argument("--ollama-url", help="Adresse der Ollama-API (Standard: http://localhost:11434)")
 
@@ -38,6 +40,13 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(apply)
     apply.add_argument("--restore-deleted", action="store_true", help="gelöschte Terminnotizen wieder anlegen")
     return parser
+
+
+def _refresh_option(value: list[str] | None) -> bool | set[str]:
+    """--refresh fehlt -> False, --refresh -> True (alle), --refresh A B -> {A, B}."""
+    if value is None:
+        return False
+    return set(value) if value else True
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -53,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.export and not args.export.exists():
                 raise ValueError(f"Export nicht gefunden: {args.export}")
             pipeline.run(config, pipeline.RunOptions(
-                export=args.export, initial=args.initial, refresh=args.refresh,
+                export=args.export, initial=args.initial, refresh=_refresh_option(args.refresh),
                 restore_deleted=args.restore_deleted, force=args.force))
         elif args.command == "apply":
             pipeline.run(config, pipeline.RunOptions(

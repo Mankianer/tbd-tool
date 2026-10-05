@@ -87,34 +87,69 @@ class ExtractionRun:
         return not self.missing
 
 
+@dataclass
+class CacheEntry:
+    result: dict
+    model: str            # Modell, mit dem das Ergebnis erzeugt wurde
+    prompt_hash: str      # Prompt-Stand, mit dem das Ergebnis erzeugt wurde
+    migrated: bool = False
+
+
 class ExtractionCache:
     """Speichert Ergebnisse unter .tbd/cache/<extraktor>/<protokoll>.json.
 
-    Der Schlüssel ist ein Hash aus Protokolltext, Prompt, Modell, Schema und
-    Extraktor-Version. Ändert sich davon etwas, gilt der Eintrag als veraltet.
-    Bekannte Themen/Personen gehen bewusst NICHT in den Schlüssel ein –
-    sonst würde jede neue Person alle Protokolle neu extrahieren lassen.
+    Ein Eintrag gilt als gültig, solange sich nichts ändert, wodurch das
+    Ergebnis nicht mehr passen kann:
+      - ``text_hash``       der Protokolltext
+      - ``structure_hash``  JSON-Schema und Extraktor-Version (Aufbau des Ergebnisses)
+
+    Modell und Prompt werden nur VERMERKT, machen den Eintrag aber nicht ungültig.
+    So kann man das Modell wechseln oder den Prompt verbessern, ohne dass alles
+    neu ausgewertet werden muss. Neu auswerten geht gezielt mit ``--refresh``.
+
+    Bekannte Themen/Personen fließen nirgends ein – sonst würde jede neue Person
+    alle Protokolle neu extrahieren lassen.
     """
+
+    FORMAT = 2
 
     def __init__(self, tool_dir: Path, extractor_name: str):
         self.dir = tool_dir / "cache" / extractor_name
 
     @staticmethod
-    def make_key(*parts: str) -> str:
+    def make_hash(*parts: str) -> str:
         return hashlib.sha256("\x00".join(parts).encode()).hexdigest()
 
-    def get(self, protocol_name: str, key: str) -> dict | None:
-        path = self.dir / f"{protocol_name}.json"
+    def _path(self, protocol_name: str) -> Path:
+        return self.dir / f"{protocol_name}.json"
+
+    def get(self, protocol_name: str, text_hash: str, structure_hash: str) -> CacheEntry | None:
+        path = self._path(protocol_name)
         if not path.exists():
             return None
         data = json.loads(path.read_text(encoding="utf-8"))
-        return data.get("result") if data.get("key") == key else None
+        if "result" not in data:
+            return None
+        if data.get("format") != self.FORMAT:
+            # Altes Format (bis Version 0.1): Schlüssel nicht mehr prüfbar -> einmalig übernehmen
+            return CacheEntry(result=data["result"], model="unbekannt", prompt_hash="", migrated=True)
+        if data.get("text_hash") != text_hash or data.get("structure_hash") != structure_hash:
+            return None
+        return CacheEntry(result=data["result"], model=data.get("model", "unbekannt"),
+                          prompt_hash=data.get("prompt_hash", ""))
 
-    def put(self, protocol_name: str, key: str, result: dict) -> None:
+    def put(self, protocol_name: str, entry: CacheEntry, text_hash: str, structure_hash: str) -> None:
         self.dir.mkdir(parents=True, exist_ok=True)
-        path = self.dir / f"{protocol_name}.json"
-        path.write_text(json.dumps({"key": key, "result": result}, ensure_ascii=False, indent=1),
-                        encoding="utf-8")
+        data = {
+            "format": self.FORMAT,
+            "text_hash": text_hash,
+            "structure_hash": structure_hash,
+            "model": entry.model,
+            "prompt_hash": entry.prompt_hash,
+            "result": entry.result,
+        }
+        self._path(protocol_name).write_text(json.dumps(data, ensure_ascii=False, indent=1),
+                                             encoding="utf-8")
 
 
 def run_extractor(
@@ -124,26 +159,46 @@ def run_extractor(
     model_name: str,
     context: ExtractionContext,
     llm: OllamaClient | None,
-    refresh: bool = False,
+    refresh: bool | set[str] = False,
 ) -> ExtractionRun:
     """Liefert für jedes Protokoll ein Ergebnis – aus dem Cache oder per LLM.
 
+    ``refresh``: True = alle Protokolle neu auswerten, eine Menge von
+    Protokollnamen = nur diese, False = nur was nicht im Cache ist.
     Ist ``llm`` None (z.B. bei ``tbd apply``), wird nur der Cache benutzt.
     """
     run = ExtractionRun()
     system, user_template = extractor.load_prompts()
     schema = extractor.schema()
-    schema_text = json.dumps(schema, sort_keys=True)
+    structure_hash = cache.make_hash(json.dumps(schema, sort_keys=True), str(extractor.version))
+    prompt_hash = cache.make_hash(system, user_template)
+    outdated: list[str] = []    # aus dem Cache, aber mit anderem Modell oder Prompt erzeugt
+
+    if isinstance(refresh, set):
+        unknown = refresh - {p.name for p in protocols}
+        if unknown:
+            log.warning("--refresh: Protokoll(e) nicht gefunden: %s (Format: JJJJ-MM-TT)",
+                        ", ".join(sorted(unknown)))
 
     todo: list[tuple[ProtocolText, str]] = []
     for protocol in protocols:
-        key = cache.make_key(protocol.text, system, user_template, model_name, schema_text,
-                             str(extractor.version))
-        cached = None if refresh else cache.get(protocol.name, key)
-        if cached is not None:
-            run.results[protocol.name] = extractor.result_model.model_validate(cached)
-        else:
-            todo.append((protocol, key))
+        text_hash = cache.make_hash(protocol.text)
+        wants_refresh = refresh is True or (isinstance(refresh, set) and protocol.name in refresh)
+        entry = None if wants_refresh else cache.get(protocol.name, text_hash, structure_hash)
+        result = _validate(extractor, entry)
+        if result is None:
+            todo.append((protocol, text_hash))
+            continue
+        run.results[protocol.name] = result
+        if entry.migrated:
+            cache.put(protocol.name, entry, text_hash, structure_hash)   # ins neue Format umschreiben
+        if entry.model != model_name or entry.prompt_hash != prompt_hash:
+            outdated.append(f"{protocol.name} ({entry.model})")
+
+    if outdated:
+        log.info("%d Ergebnis(se) im Cache stammen von einem anderen Modell oder einem älteren Prompt. "
+                 "Neu auswerten: tbd sync --refresh [PROTOKOLL …]", len(outdated))
+        log.debug("  %s", ", ".join(outdated))
 
     if not todo:
         return run
@@ -154,7 +209,7 @@ def run_extractor(
 
     llm.check()
     log.info("Extrahiere %s aus %d Protokoll(en) mit %s …", extractor.name, len(todo), llm.model)
-    for number, (protocol, key) in enumerate(todo, start=1):
+    for number, (protocol, text_hash) in enumerate(todo, start=1):
         started = time.monotonic()
         user = extractor.user_message(user_template, protocol, context)
         _warn_if_too_long(protocol.name, system + user, llm.num_ctx)
@@ -163,12 +218,23 @@ def run_extractor(
             run.missing.append(protocol.name)
             log.error("  [%d/%d] %s: fehlgeschlagen", number, len(todo), protocol.name)
             continue
-        cache.put(protocol.name, key, result.model_dump(mode="json"))
+        entry = CacheEntry(result=result.model_dump(mode="json"), model=llm.model, prompt_hash=prompt_hash)
+        cache.put(protocol.name, entry, text_hash, structure_hash)
         run.results[protocol.name] = result
         extractor.learn(result, context)
         log.info("  [%d/%d] %s: %s (%.0f s)", number, len(todo), protocol.name,
                  _summary(result), time.monotonic() - started)
     return run
+
+
+def _validate(extractor: Extractor, entry: CacheEntry | None) -> BaseModel | None:
+    """Prüft, ob ein Cache-Eintrag noch zum Datenmodell passt (wichtig bei alten Einträgen)."""
+    if entry is None:
+        return None
+    try:
+        return extractor.result_model.model_validate(entry.result)
+    except ValidationError:
+        return None
 
 
 def _warn_if_too_long(protocol_name: str, prompt: str, num_ctx: int) -> None:

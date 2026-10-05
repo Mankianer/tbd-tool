@@ -36,7 +36,7 @@ class RunOptions:
     export: Path | None = None      # Google-Docs-Export, der importiert werden soll
     use_llm: bool = True            # False = nur Cache (tbd apply)
     initial: bool = False           # unbekannte Personen/Themen direkt als Notizen anlegen
-    refresh: bool = False           # Cache ignorieren, alles neu extrahieren
+    refresh: bool | set[str] = False   # True = alles neu auswerten, {Protokollnamen} = nur diese
     restore_deleted: bool = False   # gelöschte Terminnotizen wieder anlegen
     force: bool = False             # Sperrdatei ignorieren
     today: date | None = None       # für Tests

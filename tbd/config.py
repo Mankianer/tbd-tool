@@ -39,7 +39,8 @@ DEFAULT_VAULT_CONFIG = """\
 # Rechnerspezifisches (z.B. die Ollama-Adresse) gehört in ~/.config/tbd/config.yaml.
 
 # Ollama-Modell für die Extraktion. Bewusst hier festgelegt, damit alle Rechner
-# dieselben Ergebnisse liefern. Wird es geändert, werden alle Protokolle neu extrahiert.
+# dasselbe Modell verwenden. Ein Wechsel wirkt nur auf neue oder geänderte Protokolle;
+# bereits ausgewertete neu auswerten: tbd sync --refresh [PROTOKOLL …]
 model: qwen2.5:14b
 
 llm:
