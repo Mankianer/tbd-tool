@@ -4,8 +4,6 @@
 eine Notiz pro Besprechung, pro Termin, pro Person und pro Thema – verknüpft über
 Properties, auswertbar mit Dataview, korrigierbar von Hand.
 
-Die Extraktion läuft lokal über [Ollama](https://ollama.com). Es verlassen keine Daten den Rechner.
-
 ---
 
 ## Installation
@@ -30,10 +28,10 @@ ollama_url: http://localhost:11434
 ## Benutzung
 
 ```bash
-tbd init  --vault ~/Obsidian/TBD                         # einmalig: Ordner, Übersichten, Konfiguration
-tbd sync  --vault ~/Obsidian/TBD --export Protokoll.md --initial    # Erstlauf
-tbd sync  --vault ~/Obsidian/TBD --export Protokoll.md   # jeder weitere Export
-tbd apply --vault ~/Obsidian/TBD                         # nur Prüfbericht umsetzen (ohne LLM, Sekunden)
+tbd init  --vault obsidian/TBD-Data                        # einmalig: Ordner, Übersichten, Konfiguration
+tbd sync  --vault obsidian/TBD-Data --export Protokoll.md --initial    # Erstlauf
+tbd sync  --vault obsidian/TBD-Data --export Protokoll.md   # jeder weitere Export
+tbd apply --vault obsidian/TBD-Data                         # nur Prüfbericht umsetzen (ohne LLM, Sekunden)
 ```
 
 Den Export bekommst du in Google Docs über **Datei → Herunterladen → Markdown (.md)**.
