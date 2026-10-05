@@ -44,9 +44,10 @@ model: qwen2.5:14b
 
 llm:
   temperature: 0
-  num_ctx: 16384      # Kontextlänge in Tokens – muss das längste Protokoll + Prompt fassen
+  num_ctx: 8192       # Kontextlänge in Tokens – muss Prompt + längstes Protokoll + Antwort fassen.
+                      # Größer = mehr Grafikspeicher. Das Tool warnt, wenn es knapp wird.
   timeout: 600        # Sekunden pro Anfrage
-  # think: false      # nur für "Thinking"-Modelle wie qwen3 setzen
+  # think: false      # für "Thinking"-Modelle (qwen3, qwen3.5, …) setzen – spart viel Zeit
 
 # Ordnernamen im Vault
 folders:
@@ -85,7 +86,7 @@ class Config:
     ollama_url: str = "http://localhost:11434"
     model: str = "qwen2.5:14b"
     temperature: float = 0.0
-    num_ctx: int = 16384
+    num_ctx: int = 8192
     timeout: int = 600
     think: bool | None = None
     folders: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_FOLDERS))

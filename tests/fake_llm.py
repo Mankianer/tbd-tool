@@ -15,17 +15,22 @@ DATE_RE = re.compile(r"(\d{1,2}\.\d{1,2}\.(?:\d{4})?)")
 
 class FakeLLM:
     model = "fake"
+    num_ctx = 8192
 
     def __init__(self):
         self.calls = 0
+        self.system_prompts: list[str] = []
 
     def check(self):
         pass
 
     def chat_json(self, system, user, schema):
         self.calls += 1
+        self.system_prompts.append(system)
+        # Nur den Protokolltext auswerten (steht nach der Überschrift "# Besprechung vom …")
+        protocol_text = user.split("# Besprechung vom", 1)[-1].split("\n", 1)[-1]
         appointments = []
-        for line in user.splitlines():
+        for line in protocol_text.splitlines():
             match = DATE_RE.search(line)
             if not match:
                 continue

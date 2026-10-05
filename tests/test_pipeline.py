@@ -85,6 +85,11 @@ def test_initial_run_creates_everything(vault):
     assert meeting.props["status"] == "abgesagt"
     assert Note.load(root / "Protokolle" / "2026-09-18.md").props["status"] == "stattgefunden"
 
+    # Prompt-Caching: Die System-Nachricht ist für alle Protokolle identisch
+    assert len(fake.system_prompts) == 2
+    assert len(set(fake.system_prompts)) == 1
+    assert "{{" not in fake.system_prompts[0]
+
     # Zweiter Lauf: alles aus dem Cache, keine LLM-Aufrufe
     calls = fake.calls
     sync(config, export)

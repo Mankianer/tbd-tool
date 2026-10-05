@@ -15,18 +15,17 @@ class AppointmentExtractor(Extractor):
     name = "appointments"
     version = 1                     # hochzählen, wenn sich die Auswertung grundlegend ändert
     result_model = AppointmentExtraction
-    prompt_file = Path(__file__).with_name("prompt.md")
+    system_prompt_file = Path(__file__).with_name("prompt_system.md")
+    user_prompt_file = Path(__file__).with_name("prompt_user.md")
 
-    def fill_prompt(self, template: str, protocol: ProtocolText, context: ExtractionContext) -> str:
-        values = {
+    def prompt_values(self, protocol: ProtocolText, context: ExtractionContext) -> dict[str, str]:
+        return {
             "protocol_date": protocol.date.strftime("%d.%m.%Y"),
             "protocol_weekday": WEEKDAYS[protocol.date.weekday()],
             "known_topics": _bullet_list(context.known_topics),
             "known_persons": _bullet_list(context.known_persons),
+            "protocol_text": protocol.text,
         }
-        for key, value in values.items():
-            template = template.replace("{{" + key + "}}", value)
-        return template
 
     def learn(self, result: AppointmentExtraction, context: ExtractionContext) -> None:
         known = {normalize_name(t.split(" (")[0]) for t in context.known_topics}

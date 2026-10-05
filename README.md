@@ -55,6 +55,18 @@ Dabei muss der Protokoll-Tab geöffnet sein.
 Der erste Lauf über alle Protokolle dauert je nach Rechner und Modell eine Weile
 (grob 10–60 Sekunden pro Protokoll). Danach werden nur neue oder geänderte Protokolle ausgewertet.
 
+### Geschwindigkeit
+
+- Das Modell muss **komplett in den Grafikspeicher** passen. Während eines Laufs `ollama ps`
+  ausführen: Steht dort nicht „100% GPU“, ist das Modell zu groß und läuft teilweise auf der
+  CPU – dann ein kleineres Modell oder ein kleineres `num_ctx` wählen.
+- Bei „Thinking“-Modellen (qwen3, qwen3.5, …) in `.tbd/config.yaml` `think: false` setzen.
+- Ollama mit diesen Umgebungsvariablen starten halbiert den Speicher für den Kontext:
+  `OLLAMA_FLASH_ATTENTION=1` und `OLLAMA_KV_CACHE_TYPE=q8_0`.
+- Die Anweisungen an das Modell (`prompt_system.md`) sind für alle Protokolle gleich.
+  Ollama verarbeitet sie dadurch nur einmal pro Lauf und nicht bei jedem Protokoll neu.
+  Wechselnde Angaben gehören deshalb immer in `prompt_user.md`.
+
 ---
 
 ## Der Vault
@@ -156,7 +168,8 @@ tbd/
 │   ├── protocols/         Export importieren, Besprechungsnotizen
 │   └── appointments/      Termine
 │       ├── models.py      Datenmodelle (+ Zuordnung englisch → deutsche Property)
-│       ├── prompt.md      ★ der Prompt – anpassen ohne Code
+│       ├── prompt_system.md ★ Anweisungen ans Modell – anpassen ohne Code
+│       ├── prompt_user.md   Nachricht pro Protokoll (Datum, bekannte Themen, Text)
 │       ├── extractor.py   verbindet Prompt und Modell
 │       ├── builder.py     Rohdaten → zusammengeführte Termine
 │       └── writer.py      Terminnotizen schreiben
@@ -170,7 +183,8 @@ an genau einer Stelle: in den `models.py` (`Field(alias="datum")`).
 
 | Was | Wo |
 |---|---|
-| Was als Termin zählt, Tonfall, Beispiele | `features/appointments/prompt.md` (Cache wird automatisch ungültig) |
+| Was als Termin zählt, Tonfall, Beispiele | `features/appointments/prompt_system.md` (Cache wird automatisch ungültig) |
+| Was pro Protokoll mitgeschickt wird | `features/appointments/prompt_user.md` + `prompt_values()` in `extractor.py` |
 | Modell, Ordnernamen, ignorierte Namen | `<Vault>/.tbd/config.yaml` |
 | Dataview-Abfragen neuer Notizen | `templates/*.md` (bestehende Notizen bleiben unverändert) |
 | Neue Property für Termine | `features/appointments/models.py` (+ ggf. Feld im Prompt und in `builder.py`) |
@@ -180,7 +194,7 @@ an genau einer Stelle: in den `models.py` (`Field(alias="datum")`).
 ### Neuer Extraktor (z.B. Aufgaben)
 
 1. `features/tasks/` anlegen nach dem Vorbild von `features/appointments/`:
-   `models.py`, `prompt.md`, `extractor.py`, `builder.py`, `writer.py`.
+   `models.py`, `prompt_system.md`, `prompt_user.md`, `extractor.py`, `builder.py`, `writer.py`.
 2. In `pipeline.py` einen weiteren Block „extrahieren → bauen → schreiben“ ergänzen.
 3. Für Personen und Themen den vorhandenen `Resolver` aus `master_data.py` nutzen –
    Aliase, Prüfbericht und Initial-Modus funktionieren dann automatisch.

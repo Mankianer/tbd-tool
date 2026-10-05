@@ -19,7 +19,7 @@ class LLMError(RuntimeError):
 
 
 class OllamaClient:
-    def __init__(self, url: str, model: str, temperature: float = 0.0, num_ctx: int = 16384,
+    def __init__(self, url: str, model: str, temperature: float = 0.0, num_ctx: int = 8192,
                  timeout: int = 600, think: bool | None = None):
         self.url = url.rstrip("/")
         self.model = model
