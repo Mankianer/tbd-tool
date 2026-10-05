@@ -122,7 +122,9 @@ def _from_mention(raw: ExtractedAppointment, protocol: ProtocolText, resolver: R
     if raw.kind == MEETING and start.value == protocol.date:
         return None
 
-    for warning in filter(None, [start.warning, end.warning if end else None]):
+    # Ein Hinweis pro Termin genügt – das Enddatum nur melden, wenn der Start unauffällig war
+    warning = start.warning or (end.warning if end else None)
+    if warning:
         _hint(review, ignored, protocol, raw, warning)
     if not _quote_found(raw.quote, protocol.text):
         _hint(review, ignored, protocol, raw,

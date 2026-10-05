@@ -144,3 +144,31 @@ def test_lock_prevents_parallel_runs(vault):
     (root / ".tbd" / "lock").write_text("{}")
     with pytest.raises(Exception, match="gesperrt"):
         sync(config, export)
+
+
+def test_year_from_context_reaches_the_note(tmp_path, monkeypatch):
+    """Protokoll 2025-05-23: 'Termine Pferdefreizeit (2026)' – das Jahr steht nur in der Überschrift."""
+
+    class ContextLLM(FakeLLM):
+        def chat_json(self, system, user, schema):
+            self.calls += 1
+            return {"appointments": [{
+                "title": "Pferdefreizeit (Option)", "kind": "veranstaltung", "status": "vorschlag",
+                "date_text": "08.05", "date": "2026-05-08", "date_end_text": "10.05", "date_end": "2026-05-10",
+                "topic": "Ponyfreizeit", "quote": "08.05 - 10.05"}]}
+
+    llm = ContextLLM()
+    monkeypatch.setattr(pipeline.OllamaClient, "from_config", classmethod(lambda cls, cfg: llm))
+    root = tmp_path / "vault"
+    root.mkdir()
+    export = tmp_path / "export.md"
+    export.write_text("23.05.2025\n\n* Termine Pferdefreizeit (2026)\n  * 08.05 - 10.05\n", encoding="utf-8")
+    config = load_config(root)
+    pipeline.init(config)
+    pipeline.run(config, pipeline.RunOptions(export=export, initial=True, today=date(2025, 5, 24)))
+
+    note = appointment(root, "Pferdefreizeit")
+    assert note.props["datum"] == date(2026, 5, 8)
+    assert note.props["datum_bis"] == date(2026, 5, 10)
+    report = (root / "_System" / "Prüfbericht.md").read_text(encoding="utf-8")
+    assert report.count("aus dem Zusammenhang übernommen") == 1
