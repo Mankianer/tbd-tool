@@ -23,7 +23,8 @@ Regeln:
 - Werden mehrere mögliche Daten zur Auswahl diskutiert, ist jedes ein eigener Termin mit status „vorschlag“.
 - Wird ein Termin abgesagt, status „abgesagt“; wird er verlegt, den neuen Termin mit status „verschoben“.
 - Ein mehrtägiger Termin (z.B. „02.–04.10.“) ist EIN Termin mit Start- und Enddatum.
-- Ohne jeden Datumsbezug ist etwas kein Termin – lass es weg.
+- Ohne jeden Datumsbezug ist etwas kein Termin – lass es weg!
+- Versuche nicht aus angegeben Wochentagen oder Zeitpunkten nach oder vor etwas ein Termin zu erzeugen. 
 - Erfinde nichts. Wenn eine Angabe fehlt, lass das Feld leer ("").
 
 # Felder
@@ -48,7 +49,8 @@ Regeln:
 - quote: die Zeile(n) aus dem Protokoll, aus denen der Termin stammt – wörtlich kopiert, maximal etwa 200 Zeichen.
 
 Bei Personen: Namen so schreiben, wie sie im Protokoll stehen. Keine Gruppen („wir“, „TBD“, „Konfis“,
-„Eltern“, „Presbyterium“). Ist eine bekannte Person gemeint, verwende deren Namen.
+„Eltern“, „Presbyterium“). Ist eine bekannte Person gemeint, verwende deren Namen. Erschließe den Kontext von Pronomen 
+aus dem kontext
 
 # Beispiel
 
