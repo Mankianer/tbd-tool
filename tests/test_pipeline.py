@@ -172,3 +172,16 @@ def test_year_from_context_reaches_the_note(tmp_path, monkeypatch):
     assert note.props["datum_bis"] == date(2026, 5, 10)
     report = (root / "_System" / "Prüfbericht.md").read_text(encoding="utf-8")
     assert report.count("aus dem Zusammenhang übernommen") == 1
+
+
+def test_topic_overview_is_created(vault):
+    root, config, export, _ = vault
+    path = root / "Übersichten" / "Themenübersicht.md"
+    note = Note.load(path)
+    assert note.props["aktuell_zeitraum"] == "14 days"
+    assert 'FROM "Termine"' in note.body and "{{" not in note.body
+
+    # Eine von Hand angepasste Übersicht wird nicht überschrieben
+    path.write_text("eigene Version", encoding="utf-8")
+    sync(config, export, initial=True)
+    assert path.read_text(encoding="utf-8") == "eigene Version"

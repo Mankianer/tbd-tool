@@ -79,7 +79,7 @@ TBD/
 ├── Termine/          2026-09-25 Vortreffen Ponyfreizeit.md
 ├── Themen/           Ponyfreizeit.md, Ponyfreizeit - Küche.md
 ├── Personen/         Bellis.md, Pia.md
-├── Übersichten/      Anstehende Termine.md, Deadlines.md, Besprechungen.md
+├── Übersichten/      Anstehende Termine.md, Deadlines.md, Besprechungen.md, Themenübersicht.md
 ├── _System/          Prüfbericht.md
 └── .tbd/             Gedächtnis des Tools (in Obsidian unsichtbar)
     ├── config.yaml   gemeinsame Einstellungen (Modell, Ordnernamen, ignorierte Namen)
@@ -89,6 +89,13 @@ TBD/
 ```
 
 `.tbd/` muss mit dem Vault mitwandern, wenn das Tool auf mehreren Rechnern laufen soll.
+
+Fehlende Übersichten werden bei jedem Lauf angelegt, vorhandene nie verändert. Wer eine
+Übersicht auf den neuesten Stand der Vorlage bringen will, löscht sie und führt `tbd apply` aus.
+
+**Themenübersicht:** Ein Thema ist aktuell, wenn sein letzter Termin höchstens zwei Wochen
+zurückliegt oder noch bevorsteht. Den Zeitraum ändert man in der Property `aktuell_zeitraum`
+der Übersicht (z.B. `21 days`, `1 month`). Unterthemen zählen zu ihrem Hauptthema.
 
 ### Properties
 

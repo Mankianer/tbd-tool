@@ -18,6 +18,7 @@ OVERVIEWS = {
     "Anstehende Termine.md": "overview_upcoming.md",
     "Deadlines.md": "overview_deadlines.md",
     "Besprechungen.md": "overview_meetings.md",
+    "Themenübersicht.md": "overview_topics.md",
 }
 
 
