@@ -26,6 +26,7 @@ Regeln:
 - Ohne jeden Datumsbezug ist etwas kein Termin – lass es weg!
 - Versuche nicht aus angegeben Wochentagen oder Zeitpunkten nach oder vor etwas ein Termin zu erzeugen. 
 - Erfinde nichts. Wenn eine Angabe fehlt, lass das Feld leer ("").
+- Reine wochentags Angaben sind kein Termin, nur in kombination mit einem Zeitbezug wie nächster Freitag, Samstag in drei Wochen
 
 # Felder
 
@@ -50,7 +51,7 @@ Regeln:
 
 Bei Personen: Namen so schreiben, wie sie im Protokoll stehen. Keine Gruppen („wir“, „TBD“, „Konfis“,
 „Eltern“, „Presbyterium“). Ist eine bekannte Person gemeint, verwende deren Namen. Erschließe den Kontext von Pronomen 
-aus dem kontext
+aus dem kontext.
 
 # Beispiel
 
