@@ -6,8 +6,9 @@ Ablauf für jede Erwähnung (ExtractedAppointment):
   3. Zitat gegen das Protokoll prüfen     (erfundene Termine erkennen)
   4. Mit anderen Erwähnungen desselben Termins zusammenführen
 
-Zwei Erwähnungen gelten als derselbe Termin, wenn Art, Datum und Hauptthema
+Zwei Erwähnungen gelten hier als derselbe Termin, wenn Art, Datum und Hauptthema
 gleich sind (siehe ``Appointment.key``). Spätere Protokolle haben Vorrang.
+Was danach noch doppelt ist (z.B. andere Art am selben Tag), fasst ``dedupe.py`` zusammen.
 """
 
 from __future__ import annotations
@@ -46,6 +47,7 @@ class Appointment:
     time_end: str | None = None
     location: str | None = None
     topic: str | None = None
+    topic_key: str = ""            # normalisiertes Hauptthema, zum Vergleichen
     responsible: list[str] = field(default_factory=list)
     involved: list[str] = field(default_factory=list)
     mentions: list[Mention] = field(default_factory=list)
@@ -68,7 +70,7 @@ class Appointment:
 
     def merge(self, newer: "Appointment") -> None:
         """Übernimmt Angaben einer späteren Erwähnung (leere Angaben überschreiben nichts)."""
-        for attr in ("title", "status", "date_end", "time", "time_end", "location", "topic"):
+        for attr in ("kind", "title", "status", "date_end", "time", "time_end", "location", "topic"):
             value = getattr(newer, attr)
             if value:
                 setattr(self, attr, value)
@@ -147,6 +149,7 @@ def _from_mention(raw: ExtractedAppointment, protocol: ProtocolText, resolver: R
         time_end=normalize_time(raw.time_end),
         location=raw.location.strip() or None,
         topic=topic,
+        topic_key=topic_key,
         responsible=responsible,
         involved=involved,
         mentions=[Mention(protocol.name, raw.quote.strip())],

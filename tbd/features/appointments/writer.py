@@ -97,8 +97,9 @@ def _handle_orphans(vault: Vault, existing: dict[str, Note], produced: set[str],
             review.add(ReviewItem(
                 id=item_id,
                 title=note.link,
-                details=["Kein Protokoll erwähnt diesen Termin mehr (z.B. weil ein Thema umbenannt wurde "
-                         "oder ein Datum korrigiert ist). Die Notiz wurde von Hand bearbeitet."],
+                details=["Kein Protokoll erwähnt diesen Termin mehr – z.B. weil ein Thema umbenannt, "
+                         "ein Datum korrigiert oder der Termin mit einem anderen zusammengeführt wurde. "
+                         "Die Notiz wurde von Hand bearbeitet, deshalb wird sie nicht automatisch gelöscht."],
                 options=[Option("delete", "Notiz löschen"), Option("ignore", "Behalten")],
             ))
     return deleted

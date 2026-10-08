@@ -37,6 +37,7 @@ class RunDecisions:
     """Entscheidungen aus dem Prüfbericht, die im aktuellen Lauf umgesetzt werden."""
     accepted_conflicts: set[str] = field(default_factory=set)
     deletions: set[str] = field(default_factory=set)
+    merges: set[str] = field(default_factory=set)     # bestätigte Dubletten (Item-Ids)
     done: list[str] = field(default_factory=list)
 
 

@@ -19,10 +19,11 @@ from .core.llm import OllamaClient
 from .core.lock import VaultLock
 from .core.managed import ManagedWriter
 from .core.review import Review, read_decisions
-from .core.state import IgnoreList, State
+from .core.state import IgnoreList, MergeList, State
 from .core.vault import Vault
 from .features import master_data
 from .features.appointments.builder import build_appointments
+from .features.appointments.dedupe import merge_duplicates
 from .features.appointments.extractor import AppointmentExtractor
 from .features.appointments.writer import write_appointments
 from .features.protocols.ingest import import_export, load_protocols
@@ -58,6 +59,7 @@ def run(config: Config, options: RunOptions) -> None:
     with VaultLock(vault.tool_dir, force=options.force):
         state = State.load(vault.tool_dir)
         ignored = IgnoreList.load(vault.tool_dir)
+        merges = MergeList.load(vault.tool_dir)
 
         # 1. Entscheidungen aus dem Prüfbericht umsetzen (Personen/Themen anlegen, Aliase, …)
         decisions = master_data.apply_decisions(vault, read_decisions(vault.review_path), ignored)
@@ -92,6 +94,13 @@ def run(config: Config, options: RunOptions) -> None:
             resolver = master_data.Resolver.from_vault(vault, ignored, review)
             built = build_appointments(protocols, extraction.results, resolver, review, ignored)
 
+        # 4b. Doppelte Termine zusammenführen (z.B. gleicher Tag, aber andere Art)
+        built.appointments = merge_duplicates(
+            built.appointments,
+            existing_ids=set(vault.notes_by_id("appointments")),
+            merges=merges, decisions=decisions, review=review, ignored=ignored,
+        )
+
         # 5. Notizen schreiben
         writer = ManagedWriter(vault.root, state, review, ignored, decisions)
         meetings = write_meeting_notes(vault, protocols, built.meetings, writer, today)
@@ -106,6 +115,7 @@ def run(config: Config, options: RunOptions) -> None:
         review.save(vault.review_path)
         state.save()
         ignored.save()
+        merges.save()
 
     log.info("Fertig: %d Termine (%s), %d Besprechungsnotizen aktualisiert, %d offene Punkte im Prüfbericht.",
              len(built.appointments), ", ".join(f"{v} {k}" for k, v in stats.items()),

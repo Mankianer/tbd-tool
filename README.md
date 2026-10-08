@@ -85,6 +85,7 @@ TBD/
     ├── config.yaml   gemeinsame Einstellungen (Modell, Ordnernamen, ignorierte Namen)
     ├── state.json    was das Tool zuletzt geschrieben hat
     ├── ignored.yaml  im Prüfbericht ignorierte Einträge
+    ├── merged.yaml   im Prüfbericht bestätigte Zusammenführungen von Terminen
     └── cache/        Ergebnisse des Modells pro Protokoll
 ```
 
@@ -143,6 +144,26 @@ Weitere Regeln:
   Sonst fragt der Prüfbericht.
 - Fehlen die Auto-Marker in einer Notiz, wird ihr Text nicht mehr angefasst.
 
+### Doppelte Termine
+
+Wird ein Termin in mehreren Protokollen erwähnt, entsteht trotzdem nur eine Notiz – mit
+allen Protokollen unter `quellen`; spätere Protokolle haben bei Uhrzeit, Ort usw. Vorrang.
+Weil das Modell nicht immer einheitlich ist, werden Termine **am selben Tag** zusätzlich
+verglichen (`features/appointments/dedupe.py`):
+
+| Fall | Ergebnis |
+|---|---|
+| gleiches Thema und (gleiche Art oder ähnlicher Titel) | automatisch zusammengeführt |
+| einer ohne Thema, ähnlicher Titel | automatisch zusammengeführt |
+| ähnlicher Titel, verschiedene Themen | Vorschlag im Prüfbericht |
+| gleiches Thema, andere Art, anderer Titel | Vorschlag im Prüfbericht |
+| sonst | getrennt |
+
+Bestätigte Vorschläge stehen in `.tbd/merged.yaml`. Sind zwei Themen eigentlich dasselbe
+(„Ponyfreizeit“/„Pferdefreizeit“), ist ein Alias im Thema die bessere Lösung – danach wird
+automatisch zusammengeführt. Von den bisherigen Notizen bleibt die älteste, die es noch gibt;
+die übrigen werden gelöscht, sofern sie niemand bearbeitet hat (sonst: Prüfbericht).
+
 ### Cache
 
 Die Ergebnisse des Modells liegen pro Protokoll in `.tbd/cache/`. Ein Eintrag wird nur
@@ -156,8 +177,8 @@ wird nur auf Wunsch mit `--refresh` – für alle oder einzelne Protokolle.
 
 ### Der Prüfbericht
 
-Wird bei jedem Lauf neu erzeugt. Abschnitte: neue Personen, neue Themen, Konflikte,
-verwaiste Termine, Hinweise (z.B. unplausibles Jahr, Zitat nicht im Protokoll gefunden).
+Wird bei jedem Lauf neu erzeugt. Abschnitte: neue Personen, neue Themen, mögliche doppelte
+Termine, Konflikte, verwaiste Termine, Hinweise (z.B. unplausibles Jahr, Zitat nicht im Protokoll gefunden).
 Pro Eintrag **eine** Option anhaken. Bei „Alias von [[…]]“ darf der Name im Link vorher
 geändert werden. Ignorierte Einträge stehen in `.tbd/ignored.yaml`; eine Zeile dort
 löschen holt den Eintrag zurück.
@@ -177,7 +198,7 @@ tbd/
 │   ├── names.py           Namen normalisieren, Alias-Index
 │   ├── managed.py         ★ Properties schreiben ohne Handeingaben zu überschreiben
 │   ├── review.py          Prüfbericht erzeugen und auslesen
-│   ├── state.py           state.json und ignored.yaml
+│   ├── state.py           state.json, ignored.yaml, merged.yaml
 │   ├── extraction.py      Rahmen für LLM-Extraktoren inkl. Cache
 │   ├── llm.py             Ollama-Client
 │   ├── dates.py           Datum/Uhrzeit aus Text
@@ -190,7 +211,8 @@ tbd/
 │       ├── prompt_system.md ★ Anweisungen ans Modell – anpassen ohne Code
 │       ├── prompt_user.md   Nachricht pro Protokoll (Datum, bekannte Themen, Text)
 │       ├── extractor.py   verbindet Prompt und Modell
-│       ├── builder.py     Rohdaten → zusammengeführte Termine
+│       ├── builder.py     Rohdaten → Termine (gleicher Schlüssel = ein Termin)
+│       ├── dedupe.py      Dubletten am selben Tag erkennen und zusammenführen
 │       └── writer.py      Terminnotizen schreiben
 └── templates/             Vorlagen für neue Notizen (inkl. Dataview-Abfragen)
 ```
@@ -207,7 +229,7 @@ an genau einer Stelle: in den `models.py` (`Field(alias="datum")`).
 | Modell, Ordnernamen, ignorierte Namen | `<Vault>/.tbd/config.yaml` |
 | Dataview-Abfragen neuer Notizen | `templates/*.md` (bestehende Notizen bleiben unverändert) |
 | Neue Property für Termine | `features/appointments/models.py` (+ ggf. Feld im Prompt und in `builder.py`) |
-| Wann zwei Erwähnungen derselbe Termin sind | `Appointment.key` in `builder.py` |
+| Wann zwei Erwähnungen derselbe Termin sind | `compare()` und die Schwellen oben in `dedupe.py` |
 | Jahr bei Daten ohne Jahreszahl | `LOOKBACK` in `core/dates.py` |
 
 ### Neuer Extraktor (z.B. Aufgaben)

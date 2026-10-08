@@ -185,3 +185,43 @@ def test_topic_overview_is_created(vault):
     path.write_text("eigene Version", encoding="utf-8")
     sync(config, export, initial=True)
     assert path.read_text(encoding="utf-8") == "eigene Version"
+
+
+DUPLICATE_EXPORT = """\
+18\\.09.2026
+
+* Ponyfreizeit Anmeldung 30.09. abgeben
+
+11.09.2026
+
+* Anmeldung Ponyfreizeit bis 30.09.
+"""
+
+
+def test_duplicates_from_different_protocols_are_merged(vault, tmp_path):
+    root, config, _, _ = vault
+    export = tmp_path / "dup.md"
+    export.write_text(DUPLICATE_EXPORT, encoding="utf-8")
+    sync(config, export, initial=True)
+
+    # Das Fake-Modell liefert einmal "deadline", einmal "veranstaltung" -> trotzdem eine Notiz
+    notes = [p for p in (root / "Termine").glob("2026-09-30*.md")]
+    assert len(notes) == 1
+    note = Note.load(notes[0])
+    assert set(note.props["quellen"]) == {"[[2026-09-11]]", "[[2026-09-18]]"}
+
+
+def test_existing_duplicate_notes_are_cleaned_up(vault, tmp_path, monkeypatch):
+    """Vault aus der Zeit vor der Zusammenführung: zwei Notizen -> eine bleibt."""
+    root, config, _, _ = vault
+    export = tmp_path / "dup.md"
+    export.write_text(DUPLICATE_EXPORT, encoding="utf-8")
+
+    from tbd.features.appointments import dedupe
+    monkeypatch.setattr(pipeline, "merge_duplicates", lambda appointments, **_: appointments)
+    sync(config, export, initial=True)
+    assert len(list((root / "Termine").glob("2026-09-30*.md"))) == 2
+
+    monkeypatch.setattr(pipeline, "merge_duplicates", dedupe.merge_duplicates)
+    pipeline.run(config, pipeline.RunOptions(use_llm=False, today=date(2026, 9, 19)))
+    assert len(list((root / "Termine").glob("2026-09-30*.md"))) == 1

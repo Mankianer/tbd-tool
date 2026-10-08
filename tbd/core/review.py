@@ -31,6 +31,7 @@ from pathlib import Path
 SECTIONS = {
     "person": "Neue Personen",
     "topic": "Neue Themen",
+    "duplicate": "Mögliche doppelte Termine",
     "conflict": "Konflikte (Handeingabe vs. Protokoll)",
     "orphan": "Verwaiste Termine",
     "hint": "Hinweise",

@@ -89,3 +89,41 @@ class IgnoreList:
 
     def __contains__(self, item_id: str) -> bool:
         return item_id in self.ids
+
+
+class MergeList:
+    """Im Prüfbericht bestätigte Zusammenführungen von Terminen (.tbd/merged.yaml).
+
+    Gespeichert werden Paare von Termin-Schlüsseln (Art|Datum|Thema). Ein Paar
+    löschen = die Termine werden ab dem nächsten Lauf wieder getrennt.
+    """
+
+    FILE_NAME = "merged.yaml"
+    HEADER = (
+        "# Im Prüfbericht bestätigte Zusammenführungen von Terminen.\n"
+        "# Ein Eintrag (zwei Zeilen) löschen = die Termine werden wieder getrennt.\n"
+    )
+
+    def __init__(self, path: Path, pairs: set[tuple[str, str]] | None = None):
+        self.path = path
+        self.pairs = pairs or set()
+
+    @classmethod
+    def load(cls, tool_dir: Path) -> "MergeList":
+        path = tool_dir / cls.FILE_NAME
+        if path.exists():
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or []
+            return cls(path, {tuple(sorted(map(str, pair))) for pair in data if len(pair) == 2})
+        return cls(path)
+
+    def save(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        data = [list(pair) for pair in sorted(self.pairs)]
+        body = yaml.safe_dump(data, allow_unicode=True) if data else "[]\n"
+        self.path.write_text(self.HEADER + body, encoding="utf-8")
+
+    def add(self, key_a: str, key_b: str) -> None:
+        self.pairs.add(tuple(sorted((key_a, key_b))))
+
+    def contains(self, key_a: str, key_b: str) -> bool:
+        return tuple(sorted((key_a, key_b))) in self.pairs

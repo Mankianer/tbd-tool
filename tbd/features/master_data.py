@@ -149,4 +149,8 @@ def _apply_one(vault: Vault, d: Decision, ignored: IgnoreList, result: RunDecisi
     if d.kind == "orphan" and d.action == "delete":
         result.deletions.add(d.item_id)
         return None
+    if d.kind == "duplicate" and d.action == "merge":
+        result.merges.add(d.item_id)
+        return None      # Meldung kommt beim Zusammenführen
+
     return f"⚠️ Unbekannte Aktion „{d.action}“ bei „{d.title}“"
